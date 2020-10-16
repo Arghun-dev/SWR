@@ -118,3 +118,13 @@ function Crimes() {
   return <pre>{JSON.stringify(data, null, 2)}</pre>
 }
 ```
+
+**in `SWR` every time you change the tab and then come back, the data is refreshing, that means if you change the browser tab and then come back it will refresh the page, now if you don't want this to happen, `SWR` has several options you can use, in this case `revalidateOnFocus`**
+
+in this case I want `revalidateOnFocus to be false`
+
+```js
+<SWRConfig value={{ fetcher, revalidateOnFocuse: false }}>
+  <Crimes />
+</SWRConfig>
+```
