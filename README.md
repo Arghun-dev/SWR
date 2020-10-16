@@ -50,3 +50,71 @@ SWR has you covered in all aspects of `speed`, `correctness`, and `stability` to
 . Smart error retry
 . Pagination and scroll position recovery
 . React Suspense
+
+
+
+### Without SWRConfig
+example: 
+
+`$. yarn add swr`
+
+```js
+import React from 'react'
+import SWR, { SWRConfig } from 'swr'
+
+export default function App() {
+  const url = 'https://jsonplaceholder.typicode.com/posts'
+  const fetcher = (...args) => fetch(...args).then(res => res.json())
+  const { data, error } = useSWR(url, fetcher)
+  
+  if (error) {
+    return <div>Error...</div>
+  }
+  
+  if (!data) {
+    return <div>Loading...</div>
+  }
+  
+  return <pre>{JSON.stringify(data, null, 2)}</pre>
+}
+```
+
+Now if you run the program you actually notice that the component render twice
+
+**The first time which is rendering is the `stale data`**
+
+**We first examine if we have an error or not, then we examine the data loaded or not, and finally if we are in the last line, we guarantee that we do not have an error, and data has been loaded successfully**
+
+
+
+### With SWRConfig
+
+```js
+import React from 'react'
+import useSWR, {SWRConfig} from 'swr'
+
+const fetcher = (...args) => fetch(...args).then(res => res.json())
+
+export default function App() {
+  return (
+    <SWRConfig value={{ fetcher }}>
+      <Crimes />
+    </SWRConfig>
+  )
+}
+
+function Crimes() {
+  const url = 'https://jsonplaceholder.typicode.com/posts'
+  const { data, error } = useSWR(url)
+  
+  if (error) {
+    return <div>error</div>
+  }
+  
+  if (!data) {
+    return <div>loading...</div>
+  }
+  
+  return <pre>{JSON.stringify(data, null, 2)}</pre>
+}
+```
