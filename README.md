@@ -1,68 +1,130 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# SWR
 
-## Available Scripts
+`SWR` is a React Hooks library for remote data fetching
 
-In the project directory, you can run:
+**SWR is a strategy to first return the data from cache (stale), then send the fetch request (revalidate), and finally come with the up-to-date data.**
 
-### `yarn start`
+**With SWR, components will get a stream of data updates `constantly` and `automatically`.
+And the UI will be always `fast` and `reactive`.**
 
-Runs the app in the development mode.<br />
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+**it will show you the cached version of data if it has it, and in the background it's going to fetch the new version once it gets it, it has a lot of built in support, for example `suspense`**
 
-The page will reload if you make edits.<br />
-You will also see any lint errors in the console.
 
-### `yarn test`
+## Overview
 
-Launches the test runner in the interactive watch mode.<br />
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```js
+import useSWR from 'swr'
+function Profile() {
+  const { data, error } = useSWR('/api/user', fetcher)
+  if (error) return <div>failed to load</div>
+  if (!data) return <div>loading...</div>
+  return <div>hello {data.name}!</div>
+}
+```
 
-### `yarn build`
+In this example, the `useSWR` hook accepts a `key string` and a `fetcher function`. `key` is a unique identifier of the data `(normally the API URL)` and will be passed to `fetcher`. `fetcher can be any asynchronous function` which returns the `data`, you can use the native fetch or tools like `Axios`.
 
-Builds the app for production to the `build` folder.<br />
-It correctly bundles React in production mode and optimizes the build for the best performance.
+The hook returns 2 values: `data` and `error`, based on the status of the request.
 
-The build is minified and the filenames include the hashes.<br />
-Your app is ready to be deployed!
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Features
 
-### `yarn eject`
+With just one single line of code, you can simplify the logic of data fetching in your project, and also have all these amazing features out-of-the-box:
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+. JAMstack oriented
+. Fast, lightweight and reusable data fetching
+. Built-in cache and request deduplication
+. Real-time experience
+. Transport and protocol agnostic
+. TypeScript ready
+. React Native
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+SWR has you covered in all aspects of `speed`, `correctness`, and `stability` to help you build better experiences:
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+. Fast page navigation
+. Polling on interval
+. Data dependency
+. Revalidation on focus
+. Revalidation on network recovery
+. Local mutation (Optimistic UI)
+. Smart error retry
+. Pagination and scroll position recovery
+. React Suspense
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
 
-## Learn More
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Without SWRConfig
+example: 
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+`$. yarn add swr`
 
-### Code Splitting
+```js
+import React from 'react'
+import SWR, { SWRConfig } from 'swr'
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/code-splitting
+export default function App() {
+  const url = 'https://jsonplaceholder.typicode.com/posts'
+  const fetcher = (...args) => fetch(...args).then(res => res.json())
+  const { data, error } = useSWR(url, fetcher)
+  
+  if (error) {
+    return <div>Error...</div>
+  }
+  
+  if (!data) {
+    return <div>Loading...</div>
+  }
+  
+  return <pre>{JSON.stringify(data, null, 2)}</pre>
+}
+```
 
-### Analyzing the Bundle Size
+Now if you run the program you actually notice that the component render twice
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size
+**The first time which is rendering is the `stale data`**
 
-### Making a Progressive Web App
+**We first examine if we have an error or not, then we examine the data loaded or not, and finally if we are in the last line, we guarantee that we do not have an error, and data has been loaded successfully**
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app
 
-### Advanced Configuration
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/advanced-configuration
+### With SWRConfig
 
-### Deployment
+```js
+import React from 'react'
+import useSWR, {SWRConfig} from 'swr'
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/deployment
+const fetcher = (...args) => fetch(...args).then(res => res.json())
 
-### `yarn build` fails to minify
+export default function App() {
+  return (
+    <SWRConfig value={{ fetcher }}>
+      <Crimes />
+    </SWRConfig>
+  )
+}
 
-This section has moved here: https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify
+function Crimes() {
+  const url = 'https://jsonplaceholder.typicode.com/posts'
+  const { data, error } = useSWR(url)
+  
+  if (error) {
+    return <div>error</div>
+  }
+  
+  if (!data) {
+    return <div>loading...</div>
+  }
+  
+  return <pre>{JSON.stringify(data, null, 2)}</pre>
+}
+```
+
+**in `SWR` every time you change the tab and then come back, the data is refreshing, that means if you change the browser tab and then come back it will refresh the page, now if you don't want this to happen, `SWR` has several options you can use, in this case `revalidateOnFocus`**
+
+in this case I want `revalidateOnFocus to be false`
+
+```js
+<SWRConfig value={{ fetcher, revalidateOnFocuse: false }}>
+  <Crimes />
+</SWRConfig>
+```
