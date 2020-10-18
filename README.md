@@ -639,3 +639,63 @@ useSWR(['/api/user', { id }], query)
 // Instead, you should only pass “stable” values.
 useSWR(['/api/user', id], (url, id) => query(url, { id }))
 ```
+
+
+## Mutation
+
+### Revalidate
+
+You can broadcast a revalidation message globally to all SWRs with the same key by calling `mutate(key)`.
+
+This example shows how to automatically refetch the login info (e.g.: inside <Profile/>) when the user clicks the “Logout” button.
+
+```js
+import useSWR, { mutate } from 'swr'
+function App () {
+  return (
+    <div>
+      <Profile />
+      <button onClick={() => {
+        // set the cookie as expired
+        document.cookie = 'token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;'
+        // tell all SWRs with this key to revalidate
+        mutate('/api/user')
+      }}>
+        Logout
+      </button>
+    </div>
+  )
+}
+```
+
+### Mutation and Post Request
+
+In many cases, applying local mutations to data is a good way to make changes feel faster — no need to wait for the remote source of data.
+
+With `mutate`, you can update your local data programmatically, while revalidating and finally replace it with the latest data.
+
+```js
+import useSWR, { mutate } from 'swr'
+function Profile () {
+  const { data } = useSWR('/api/user', fetcher)
+  return (
+    <div>
+      <h1>My name is {data.name}.</h1>
+      <button onClick={async () => {
+        const newName = data.name.toUpperCase()
+        
+        // update the local data immediately, but disable the revalidation
+        mutate('/api/user', { ...data, name: newName }, false)
+        
+        // send a request to the API to update the source
+        await requestUpdateUsername(newName)
+        
+        // trigger a revalidation (refetch) to make sure our local data is correct
+        mutate('/api/user')
+      }}>Uppercase my name!</button>
+    </div>
+  )
+}
+```
+
+Clicking the button in the example above will send a POST request to modify the remote data, locally update the client data and try to fetch the latest one (revalidate).
