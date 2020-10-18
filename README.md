@@ -520,3 +520,122 @@ You can always get the error object inside the component reactively. But in case
   <MyApp />
 </SWRConfig>
 ```
+
+
+## Auto Revalidation
+
+### Revalidate on Focus
+
+When you re-focus a page or switch between tabs, SWR automatically revalidates data.
+
+This can be useful to immediately synchronize to the latest state. This is helpful for refreshing data in scenarios like stale mobile tabs, or laptops that `went to sleep`.
+
+
+### Revalidate on Interval
+
+In many cases, data changes because of multiple devices, multiple users, multiple tabs. How can we over time update the data on screen?
+
+SWR will give you the option to automatically refetch data. It’s smart which means refetching will only happen if the component associated with the hook is on screen.
+
+You can enable it by setting a `refreshInterval` value:
+
+```js
+useSWR('/api/todos', fetcher, { refreshInterval: 1000 })
+```
+
+There're also options such as `refreshWhenHidden` and `refreshWhenOffline`. Both are disabled by default so SWR won't fetch when the webpage is not on screen, or there's no network connection.
+
+### Revalidate on Reconnect
+
+It's useful to also revalidate when the user is back online. This scenario happens a lot when the user unlocks their computer, but the internet is not yet connected at the same moment.
+
+To make sure the data is always up-to-date, SWR automatically revalidates when network recovers.
+
+This feature is enabled by default. You can disable it via the `revalidateOnReconnect` option.
+
+
+## Conditional Data Fetching
+
+### Conditional
+
+Use null or pass a function as key to conditionally fetch data. If the function throws or returns a falsy value, SWR will not start the request.
+
+```js
+// conditionally fetch
+const { data } = useSWR(shouldFetch ? '/api/data' : null, fetcher)
+
+// ...or return a falsy value
+const { data } = useSWR(() => shouldFetch ? '/api/data' : null, fetcher)
+
+// ... or throw an error when user.id is not defined
+const { data } = useSWR(() => '/api/data?uid=' + user.id, fetcher)
+```
+
+### Dependant
+
+SWR also allows you to fetch data that depends on other data. It ensures the maximum possible parallelism (avoiding waterfalls), as well as serial fetching when a piece of dynamic data is required for the next data fetch to happen.
+
+```js
+function MyProjects () {
+  const { data: user } = useSWR('/api/user')
+  const { data: projects } = useSWR(() => '/api/projects?uid=' + user.id)
+  
+  // When passing a function, SWR will use the return
+  // value as `key`. If the function throws or returns
+  // falsy, SWR will know that some dependencies are not
+  // ready. In this case `user.id` throws when `user`
+  // isn't loaded.
+  
+  if (!projects) return 'loading...'
+  return 'You have ' + projects.length + ' projects'
+}
+```
+
+## Arguments
+
+By default, `key` will be passed to `fetcher` as the argument. So the following 3 expressions are equivalent:
+
+```js
+useSWR('/api/user', () => fetcher('/api/user'))
+useSWR('/api/user', url => fetcher(url))
+useSWR('/api/user', fetcher)
+```
+
+### Multiple
+
+In some scenarios, it's useful pass multiple arguments (can be any value or object) to the fetcher function. For example an authorized fetch request:
+
+```js
+useSWR('/api/user', url => fetchWithToken(url, token))
+```
+
+This is **incorrect**. Because the identifier (also the cache key) of the data is '/api/user', so even if token changes, SWR will still use the same key and return the wrong data.
+
+Instead, you can use an `array` as the key parameter, which contains multiple arguments of fetcher:
+
+```js
+const { data: user } = useSWR(['/api/user', token], fetchWithToken)
+```
+
+The function `fetchWithToken` still accepts the same 2 arguments, but the cache key will also be associated with `token` now.
+
+
+### Passing Objects
+
+Say you have another function that fetches data with a user scope: `fetchWithUser(api, user)`. You can do the following:
+
+```js
+const { data: user } = useSWR(['/api/user', token], fetchWithToken)
+// ...and pass it as an argument to another query
+const { data: orders } = useSWR(user ? ['/api/orders', user] : null, fetchWithUser)
+```
+
+The key of the request is now the combination of both values. SWR shallowly compares the arguments on every render, and triggers revalidation if any of them has changed.
+Keep in mind that you should not recreate objects when rendering, as they will be treated as different objects on every render:
+
+```js
+// Don’t do this! Deps will be changed on every render.
+useSWR(['/api/user', { id }], query)
+// Instead, you should only pass “stable” values.
+useSWR(['/api/user', id], (url, id) => query(url, { id }))
+```
